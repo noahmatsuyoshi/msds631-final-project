@@ -20,7 +20,7 @@ class AudioSlicer:
     def slice_audio(self, aud_file):
         mp3, _ = librosa.load(aud_file, mono=False)
         sr = librosa.core.get_samplerate(aud_file)
-        if sr is not 44100:
+        if sr != 44100:
             return None
         counter[sr] += 1
         slice_samples = sr * self.slice_length
