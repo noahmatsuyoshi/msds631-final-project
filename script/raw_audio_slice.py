@@ -18,7 +18,9 @@ class AudioSlicer:
         return (slice - min_amp) / (max_amp - min_amp)
 
     def slice_audio(self, aud_file):
-        mp3, sr = librosa.load(aud_file, mono=False)
+        mp3, _ = librosa.load(aud_file, mono=False)
+        sr = librosa.core.get_samplerate(aud_file)
+        counter[sr] += 1
         slice_samples = sr * self.slice_length
         num_channels = 1 if mp3.ndim == 1 else mp3.shape[0]
         total_samples = mp3.shape[0] if mp3.ndim == 1 else mp3.shape[1]
@@ -52,5 +54,8 @@ for i in range(1, 11):
         if not os.path.isdir(f'../slices/fold{i}'):
             os.mkdir(f'../slices/fold{i}')
         np.save(f'../slices/fold{i}/{f}.npy', slices)
+for c in counter:
+    print(f"{c}:{counter[c]}")
+
 
 
