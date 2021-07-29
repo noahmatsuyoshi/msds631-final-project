@@ -20,6 +20,8 @@ class AudioSlicer:
     def slice_audio(self, aud_file):
         mp3, _ = librosa.load(aud_file, mono=False)
         sr = librosa.core.get_samplerate(aud_file)
+        if sr is not 44100:
+            return None
         counter[sr] += 1
         slice_samples = sr * self.slice_length
         num_channels = 1 if mp3.ndim == 1 else mp3.shape[0]
@@ -51,9 +53,10 @@ for i in range(1, 11):
         os.mkdir('../slices')
     for f in filenames:
         slices = audio_slicer.slice_audio(os.path.join(dirname, f))
-        if not os.path.isdir(f'../slices/fold{i}'):
-            os.mkdir(f'../slices/fold{i}')
-        np.save(f'../slices/fold{i}/{f}.npy', slices)
+        if slices is not None:
+            if not os.path.isdir(f'../slices/fold{i}'):
+                os.mkdir(f'../slices/fold{i}')
+            np.save(f'../slices/fold{i}/{f}.npy', slices)
 for c in counter:
     print(f"{c}:{counter[c]}")
 
