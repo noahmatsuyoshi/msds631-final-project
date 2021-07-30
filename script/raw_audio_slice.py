@@ -2,6 +2,7 @@ import os
 from collections import defaultdict
 
 import numpy as np
+import pandas as pd
 import librosa
 from parameter_input import *
 
@@ -17,17 +18,18 @@ class AudioSlicer:
             return slice
         return (slice - min_amp) / (max_amp - min_amp)
 
-    def slice_audio(self, aud_file):
-        mp3, _ = librosa.load(aud_file, mono=False)
+    def slice_audio(self, aud_file, fold, filename):
         sr = librosa.core.get_samplerate(aud_file)
         if sr != 44100:
             return None
-        counter[sr] += 1
+        mp3, _ = librosa.load(aud_file, sr=sr, mono=False)
+        slice_filenames = []
+        if not os.path.isdir(f'../slices/fold{fold}'):
+            os.mkdir(f'../slices/fold{fold}')
         slice_samples = sr * self.slice_length
         num_channels = 1 if mp3.ndim == 1 else mp3.shape[0]
         total_samples = mp3.shape[0] if mp3.ndim == 1 else mp3.shape[1]
         num_slices = 1 + (total_samples // slice_samples)
-        slices = np.zeros((num_channels*num_slices, slice_samples))
         for i in range(num_channels):
             channel = mp3
             if(channel.ndim > 1):
@@ -40,25 +42,26 @@ class AudioSlicer:
                     end = total_samples
                     if start < 0:
                         start = 0
-                slices[i*num_slices + slice_idx, :end-start] = self.normalize(channel[start:end])
-        return slices
+                signal = self.normalize(channel[start:end])
+                slice_filename = f"{filename}_{slice_idx}.npy"
+                slice_filenames += [slice_filename]
+                np.save(f'../slices/fold{fold}/{slice_filename}', signal)
+        return slice_filenames
 
 
 audio_slicer = AudioSlicer()
-counter = defaultdict(int)
+metadata_df = pd.read_csv("../UrbanSound8K.csv")
+slice_df = pd.DataFrame(columns=["fold", "filename", "classID"])
 for i in range(1, 11):
     dirname = f'../fold{i}'
     filenames = [f for f in os.listdir(dirname) if os.path.isfile(os.path.join(dirname, f))]
     if not os.path.isdir('../slices'):
         os.mkdir('../slices')
     for f in filenames:
-        slices = audio_slicer.slice_audio(os.path.join(dirname, f))
-        if slices is not None:
-            if not os.path.isdir(f'../slices/fold{i}'):
-                os.mkdir(f'../slices/fold{i}')
-            np.save(f'../slices/fold{i}/{f}.npy', slices)
-for c in counter:
-    print(f"{c}:{counter[c]}")
-
-
+        class_id = metadata_df.loc[metadata_df['slice_file_name'] == f, "classID"].values[0]
+        slice_filenames = audio_slicer.slice_audio(os.path.join(dirname, f), i, f)
+        if slice_filenames is not None:
+            slice_df = slice_df.append([{"fold": i, "classID": class_id, "filename": sf} for sf in slice_filenames],
+                                       ignore_index=True)
+slice_df.to_csv("../slice_filenames.csv")
 
