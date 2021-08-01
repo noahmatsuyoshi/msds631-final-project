@@ -29,6 +29,8 @@ class AudioSlicer:
         slice_samples = sr * self.slice_length
         num_channels = 1 if mp3.ndim == 1 else mp3.shape[0]
         total_samples = mp3.shape[0] if mp3.ndim == 1 else mp3.shape[1]
+        if total_samples < 44100:
+            return None
         num_slices = 1 + (total_samples // slice_samples)
         for i in range(num_channels):
             channel = mp3
