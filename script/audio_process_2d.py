@@ -12,7 +12,6 @@ from parameter_input import *
 
 metadata_df=pd.read_csv('../tiny_data/UrbanSound8K.csv')
 
-# preprocessor
 class Audio_Preprocessor:
     """
     audio preprocessor
@@ -46,15 +45,18 @@ class Audio_Preprocessor:
 
         if sr != 44100:
             self.skip = True
-            print(f'skip file {audio_file}')
-
         else:
             self.skip = False
             self.sp_rt = 44100
-            self.mp3, _ = librosa.load(aud_file, sr=self.sp_rt, mono=False)
-
-            total_time = librosa.samples_to_time(self.mp3.shape[1], self.sp_rt)
-            print(f'audio {self.stem} total {total_time} seconds.')
+            
+            
+        self.mp3, _ = librosa.load(aud_file, sr=self.sp_rt, mono=False)
+        total_time = librosa.samples_to_time(self.mp3.shape[-1], self.sp_rt)
+        
+        if total_time < 1 or len(self.mp3.shape) != 2:
+            self.skip = True
+        
+        #print(f'audio {self.stem} total {total_time} seconds.')
 
     def transform_to_Sdb(self):
         S0 = librosa.feature.melspectrogram(
@@ -80,24 +82,22 @@ class Audio_Preprocessor:
         print(f'split {self.stem}.wav for training into array with {len(self.resx_train)} windows')
         
         
-        
-        
 ap = Audio_Preprocessor()
 
 slice_path = []
 slice_classid = []
-for i in range(1, 11):
+#for i in range(1, 11):
+for i in range(1, 4):
     dirname = f'../tiny_data/fold{i}'
     filenames = [f for f in os.listdir(dirname) if os.path.isfile(os.path.join(dirname, f))]
     if not os.path.isdir('../slices_2d'):
         os.mkdir('../slices_2d')      
-    
+    print(f'start preprocess fold {i} with {len(filenames)} file')
     for f in filenames:
         ap.check(os.path.join(dirname, f))
         if not ap.skip:
             # get class id
             class_id = metadata_df.loc[metadata_df['slice_file_name'] == f, "classID"].values[0]
-
             # slice audio into windows
             ap.transform_to_Sdb()
             ap.slice_train()
@@ -115,4 +115,4 @@ window_df = pd.DataFrame(
      'classid': slice_classid
      })
 
-window_df.to_csv("../tiny_data/slice_2d_filenames.csv")
+window_df.to_csv("../slices_2d/slice_2d_filenames.csv")
