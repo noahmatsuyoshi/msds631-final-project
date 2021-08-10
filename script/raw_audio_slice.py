@@ -22,32 +22,27 @@ class AudioSlicer:
         sr = librosa.core.get_samplerate(aud_file)
         if sr != 44100:
             return None
-        mp3, _ = librosa.load(aud_file, sr=sr, mono=False)
+        mp3, _ = librosa.load(aud_file, sr=sr, mono=True)
         slice_filenames = []
         if not os.path.isdir(f'../slices/fold{fold}'):
             os.mkdir(f'../slices/fold{fold}')
         slice_samples = sr * self.slice_length
-        num_channels = 1 if mp3.ndim == 1 else mp3.shape[0]
         total_samples = mp3.shape[0] if mp3.ndim == 1 else mp3.shape[1]
         if total_samples < 44100:
             return None
         num_slices = 1 + (total_samples // slice_samples)
-        for i in range(num_channels):
-            channel = mp3
-            if(channel.ndim > 1):
-                channel = mp3[i, :]
-            for slice_idx, j in enumerate(range(0, total_samples, slice_samples)):
-                start = i*slice_samples
-                end = (i+1)*slice_samples
-                if end > total_samples:
-                    start = total_samples - slice_samples
-                    end = total_samples
-                    if start < 0:
-                        start = 0
-                signal = self.normalize(channel[start:end])
-                slice_filename = f"{filename}_{slice_idx}.npy"
-                slice_filenames += [slice_filename]
-                np.save(f'../slices/fold{fold}/{slice_filename}', signal)
+        for slice_idx, j in enumerate(range(0, total_samples, slice_samples)):
+            start = j*slice_samples
+            end = (j+1)*slice_samples
+            if end > total_samples:
+                start = total_samples - slice_samples
+                end = total_samples
+                if start < 0:
+                    start = 0
+            signal = self.normalize(mp3[start:end])
+            slice_filename = f"{filename}_{slice_idx}.npy"
+            slice_filenames += [slice_filename]
+            np.save(f'../slices/fold{fold}/{slice_filename}', signal)
         return slice_filenames
 
 
